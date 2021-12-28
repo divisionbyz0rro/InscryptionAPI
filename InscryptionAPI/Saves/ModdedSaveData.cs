@@ -56,10 +56,12 @@ namespace InscryptionAPI.Saves
             if (!SaveData.ContainsKey(guid))
                 SaveData.Add(guid, new());
 
+            string saveValue = value == null ? default(string) : value.ToString();
+
             if (!SaveData[guid].ContainsKey(key))
-                SaveData[guid].Add(key, value.ToString());
+                SaveData[guid].Add(key, saveValue);
             else
-                SaveData[guid][key] = value.ToString();
+                SaveData[guid][key] = saveValue;
         }
     }
 }
