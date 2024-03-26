@@ -207,7 +207,7 @@ public static class CardCostManager
     public static List<FullCardCost> AllCustomCosts { get; private set; } = new();
 
     internal readonly static ObservableCollection<FullCardCost> NewCosts = new();
-    
+
     public static event Func<List<FullCardCost>, List<FullCardCost>> ModifyCustomCostList;
     public static void SyncCustomCostList()
     {
@@ -455,16 +455,39 @@ public static class CardCostManager
 
         yield return instance.PlayCardOnSlot(card, lastSelectedSlot);
 
+        // Update the card cost ONLY IF it is now LOWER
+        // This allows cards to dynamically impact price in between when played and
+        // when you pay for it.
+        // This behavior is somewhat counter-intuitive HOWEVER it is true to how
+        // the game was originally coded
+
+        // The game originally just had you pay whatever the card cost when it was
+        // on the table; here, you pay the minimum of what it cost on the table
+        // and what it cost in your hand. Why? Because someone could conceivably
+        // create a card ability that causes cards to cost *more* than normal, and the
+        // vanilla way of paying for costs could cause a conflict here.
+
+        // This method stays true to the original game while allowing maximum flexibility
+
         if (bonesCost > 0)
+        {
+            bonesCost = Mathf.Min(bonesCost, card.BonesCost());
             yield return Singleton<ResourcesManager>.Instance.SpendBones(bonesCost);
+        }
 
         if (energyCost > 0)
+        {
+            energyCost = Mathf.Min(energyCost, card.EnergyCost);
             yield return Singleton<ResourcesManager>.Instance.SpendEnergy(energyCost);
+        }
 
         foreach (var cost2 in card.GetCustomCardCosts())
         {
             if (customCosts.ContainsKey(cost2.CostName))
-                yield return cost2.OnPlayed(customCosts[cost2.CostName], card);
+            {
+                int cost = Mathf.Min(customCosts[cost2.CostName], card.GetCustomCost(cost2.CostName));
+                yield return cost2.OnPlayed(cost, card);
+            }
         }
     }
     #endregion
